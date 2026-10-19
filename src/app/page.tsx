@@ -2,7 +2,7 @@ import { Hero } from "@/components/Hero";
 import { CatalogGrid } from "@/components/CatalogGrid";
 import { DrapeTool } from "@/components/DrapeTool";
 import { PatternAnalysis } from "@/components/PatternAnalysis";
-import { InstagramFeed } from "@/components/InstagramFeed";
+import { InstagramPhotos, InstagramReels } from "@/components/InstagramFeed";
 import { BoutiqueLocator } from "@/components/BoutiqueLocator";
 import { ContactButtons } from "@/components/ContactButtons";
 import { Instagram, Facebook } from "lucide-react";
@@ -39,6 +39,8 @@ export default function Home() {
           <CatalogGrid />
         </section>
 
+        <InstagramPhotos id="collection" />
+
         <section id="styling" className="py-12 sm:py-24 bg-accent/10 -mx-4 sm:-mx-6 px-4 sm:px-6">
           <div className="container mx-auto">
             <div className="text-center mb-8 sm:mb-16 space-y-4">
@@ -55,7 +57,7 @@ export default function Home() {
         </section>
 
         <section id="social" className="py-12 sm:py-24">
-          <InstagramFeed />
+          <InstagramReels />
         </section>
 
         <section id="location" className="py-12 sm:py-24">

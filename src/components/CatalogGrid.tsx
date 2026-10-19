@@ -5,9 +5,11 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/app/lib/placeholder-images";
 import { getCatalogItems } from "@/lib/catalog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const WHATSAPP_NUMBER = "918113081120";
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE_DESKTOP = 3;
+const ITEMS_PER_PAGE_MOBILE = 2;
 const fallbackCatalog = PlaceHolderImages.filter((item) => item.id.startsWith("catalog-"));
 
 function formatPrice(price?: string | number | null) {
@@ -32,6 +34,8 @@ function WhatsAppIcon() {
 export function CatalogGrid() {
   const [currentPage, setCurrentPage] = useState(1);
   const [catalogSource, setCatalogSource] = useState(fallbackCatalog);
+  const isMobile = useIsMobile();
+  const itemsPerPage = isMobile ? ITEMS_PER_PAGE_MOBILE : ITEMS_PER_PAGE_DESKTOP;
 
   useEffect(() => {
     getCatalogItems()
@@ -52,10 +56,11 @@ export function CatalogGrid() {
     });
   }, [catalogSource]);
 
-  const totalPages = Math.ceil(catalogImages.length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(catalogImages.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
   const paginatedCatalogImages = catalogImages.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
   );
 
   const handleWhatsApp = (dressName: string, price?: string | number | null) => {
@@ -67,7 +72,7 @@ export function CatalogGrid() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
         {paginatedCatalogImages.map((imgData, idx) => {
           return (
             <div
@@ -103,11 +108,11 @@ export function CatalogGrid() {
                   "
                     style={{
                       background: "linear-gradient(to top, rgba(26,18,10,0.92) 0%, rgba(26,18,10,0.6) 60%, transparent 100%)",
-                      padding: "2rem 1.25rem 1.25rem",
+                      padding: isMobile ? "1.5rem 0.625rem 0.625rem" : "2rem 1.25rem 1.25rem",
                     }}
                   >
                     <p
-                      className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2"
+                      className="text-[9px] sm:text-[11px] uppercase tracking-[0.2em] font-semibold mb-2"
                       style={{ color: "hsl(39 48% 75%)" }}
                     >
                       Interested in this design?
@@ -115,9 +120,9 @@ export function CatalogGrid() {
                     <button
                       onClick={() => handleWhatsApp(imgData.description, imgData.price)}
                       className="
-                      flex items-center gap-2.5 w-full justify-center
-                      px-4 py-2.5 rounded
-                      text-sm font-semibold tracking-wide
+                      flex items-center gap-1.5 sm:gap-2.5 w-full justify-center
+                      px-2 sm:px-4 py-2 sm:py-2.5 rounded
+                      text-xs sm:text-sm font-semibold tracking-wide
                       transition-all duration-200
                       active:scale-95
                       border
@@ -138,12 +143,12 @@ export function CatalogGrid() {
 
               {/* Card footer — clean, no button clutter */}
               <div className="space-y-1">
-                <h3 className="font-headline text-xl text-foreground group-hover:text-primary transition-colors">
+                <h3 className="font-headline text-base sm:text-xl text-foreground group-hover:text-primary transition-colors">
                   {imgData.description}
                 </h3>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Designer Series</p>
-                  <p className="text-base font-semibold text-primary">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">Designer Series</p>
+                  <p className="text-sm sm:text-base font-semibold text-primary">
                     {formatPrice(imgData.price)}
                   </p>
                 </div>
@@ -157,20 +162,20 @@ export function CatalogGrid() {
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(Math.max(1, page - 1))}
+            disabled={page === 1}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             Prev
           </button>
           <span className="text-sm font-medium text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            Page {page} of {totalPages}
           </span>
           <button
             type="button"
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(Math.min(totalPages, page + 1))}
+            disabled={page === totalPages}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next

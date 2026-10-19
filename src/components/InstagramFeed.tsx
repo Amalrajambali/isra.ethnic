@@ -86,93 +86,114 @@ function Pagination({
   );
 }
 
-export function InstagramFeed() {
+let feedRequest: Promise<InstagramFeedResponse | null> | null = null;
+
+// Both sections read the same feed, so share one request between them.
+function loadFeed() {
+  feedRequest ??= fetch("/api/instagram")
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  return feedRequest;
+}
+
+function useInstagramFeed() {
   const [reels, setReels] = useState<ImagePlaceholder[]>(fallbackReels);
   const [photos, setPhotos] = useState<ImagePlaceholder[]>(fallbackPhotos);
 
   useEffect(() => {
-    fetch("/api/instagram")
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data: InstagramFeedResponse) => {
-        if (data.source !== "instagram") return;
-        if (data.reels?.length) setReels(data.reels);
-        if (data.photos?.length) setPhotos(data.photos);
-      })
-      .catch(() => {});
+    loadFeed().then((data) => {
+      if (data?.source !== "instagram") return;
+      if (data.reels?.length) setReels(data.reels);
+      if (data.photos?.length) setPhotos(data.photos);
+    });
   }, []);
 
-  const reelPages = usePagination(reels, REELS_PER_PAGE);
-  const photoPages = usePagination(photos, PHOTOS_PER_PAGE);
+  return { reels, photos };
+}
 
+function SectionHeading({ title, showFollow }: { title: string; showFollow?: boolean }) {
   return (
-    <div className="space-y-12 sm:space-y-16">
-      <div className="space-y-6 sm:space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Instagram className="h-6 sm:h-8 w-6 sm:w-8 text-primary" />
-            <h2 className="font-headline text-2xl sm:text-3xl">Trending Reels</h2>
-          </div>
-          <a
-            href={INSTAGRAM_PROFILE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary hover:underline font-bold tracking-widest text-xs sm:text-sm uppercase inline-block sm:whitespace-nowrap"
-          >
-            Follow @isra.ethnic
-          </a>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-          {reelPages.pageItems.map((reel) => (
-            <div
-              key={reel.id}
-              className="aspect-[9/16] relative overflow-hidden rounded-2xl bg-card border border-primary/10"
-            >
-              <iframe
-                src={buildInstagramEmbedUrl(reel.reelUrl!)}
-                className="w-full h-full border-0"
-                allowFullScreen
-                scrolling="no"
-                allow="encrypted-media"
-                loading="lazy"
-                title={reel.description}
-              />
-            </div>
-          ))}
-        </div>
-        <Pagination {...reelPages} />
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <Instagram className="h-6 sm:h-8 w-6 sm:w-8 text-primary" />
+        <h2 className="font-headline text-2xl sm:text-3xl">{title}</h2>
       </div>
-
-      {photos.length > 0 && (
-        <div className="space-y-6 sm:space-y-8">
-          <div className="flex items-center gap-3">
-            <Instagram className="h-6 sm:h-8 w-6 sm:w-8 text-primary" />
-            <h2 className="font-headline text-2xl sm:text-3xl">Latest Collection</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-            {photoPages.pageItems.map((photo) => (
-              <a
-                key={photo.id}
-                href={photo.permalink || INSTAGRAM_PROFILE_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="block aspect-[4/5] relative group overflow-hidden rounded-2xl bg-card border border-primary/10"
-              >
-                {/* Instagram CDN links are signed and expire, so load them directly instead of through next/image. */}
-                <img
-                  src={photo.imageUrl}
-                  alt={photo.description}
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-xs font-semibold text-white line-clamp-2">{photo.description}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-          <Pagination {...photoPages} />
-        </div>
+      {showFollow && (
+        <a
+          href={INSTAGRAM_PROFILE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary hover:underline font-bold tracking-widest text-xs sm:text-sm uppercase inline-block sm:whitespace-nowrap"
+        >
+          Follow @isra.ethnic
+        </a>
       )}
     </div>
+  );
+}
+
+export function InstagramReels() {
+  const { reels } = useInstagramFeed();
+  const reelPages = usePagination(reels, REELS_PER_PAGE);
+
+  return (
+    <div className="space-y-6 sm:space-y-8">
+      <SectionHeading title="Trending Reels" showFollow />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+        {reelPages.pageItems.map((reel) => (
+          <div
+            key={reel.id}
+            className="aspect-[9/16] relative overflow-hidden rounded-2xl bg-card border border-primary/10"
+          >
+            <iframe
+              src={buildInstagramEmbedUrl(reel.reelUrl!)}
+              className="w-full h-full border-0"
+              allowFullScreen
+              scrolling="no"
+              allow="encrypted-media"
+              loading="lazy"
+              title={reel.description}
+            />
+          </div>
+        ))}
+      </div>
+      <Pagination {...reelPages} />
+    </div>
+  );
+}
+
+export function InstagramPhotos({ id }: { id?: string }) {
+  const { photos } = useInstagramFeed();
+  const photoPages = usePagination(photos, PHOTOS_PER_PAGE);
+
+  if (!photos.length) return null;
+
+  return (
+    <section id={id} className="py-12 sm:py-24 space-y-6 sm:space-y-8">
+      <SectionHeading title="Latest Collection" showFollow />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+        {photoPages.pageItems.map((photo) => (
+          <a
+            key={photo.id}
+            href={photo.permalink || INSTAGRAM_PROFILE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="block aspect-[4/5] relative group overflow-hidden rounded-2xl bg-card border border-primary/10"
+          >
+            {/* Instagram CDN links are signed and expire, so load them directly instead of through next/image. */}
+            <img
+              src={photo.imageUrl}
+              alt={photo.description}
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="text-xs font-semibold text-white line-clamp-2">{photo.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+      <Pagination {...photoPages} />
+    </section>
   );
 }
