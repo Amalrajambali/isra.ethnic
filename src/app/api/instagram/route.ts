@@ -4,17 +4,36 @@ import { getInstagramFeed } from "@/lib/instagram";
 
 export const revalidate = 600;
 
-const fallbackFeed = () => PlaceHolderImages.filter((item) => item.id.startsWith("insta-"));
+const fallbackReels = () =>
+  PlaceHolderImages.filter((item) => item.id.startsWith("insta-") && item.reelUrl);
+const fallbackPhotos = () =>
+  PlaceHolderImages.filter((item) => item.id.startsWith("insta-") && !item.reelUrl && item.imageUrl);
+
+function fallback(reason: string) {
+  return NextResponse.json({
+    source: "fallback",
+    reason,
+    reels: fallbackReels(),
+    photos: fallbackPhotos(),
+  });
+}
 
 export async function GET() {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
-  if (!token) return NextResponse.json(fallbackFeed());
+  const token = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
+  if (!token) return fallback("INSTAGRAM_ACCESS_TOKEN is not set");
 
   try {
-    const feed = await getInstagramFeed(token);
-    return NextResponse.json(feed.length ? feed : fallbackFeed());
+    const { reels, photos } = await getInstagramFeed(token);
+    if (!reels.length && !photos.length) return fallback("Instagram returned no posts");
+
+    return NextResponse.json({
+      source: "instagram",
+      reels: reels.length ? reels : fallbackReels(),
+      photos,
+    });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json(fallbackFeed());
+    const message = error instanceof Error ? error.message : "Instagram request failed";
+    console.error("Instagram feed error:", message);
+    return fallback(message);
   }
 }

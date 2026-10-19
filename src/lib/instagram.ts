@@ -1,9 +1,16 @@
 import type { ImagePlaceholder } from "@/app/lib/placeholder-images";
 
 const GRAPH_URL = "https://graph.instagram.com";
-const MEDIA_FIELDS = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp";
-const MAX_ITEMS = 48;
+const MEDIA_FIELDS =
+  "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_type,media_url,thumbnail_url}";
+const MAX_ITEMS = 60;
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+type InstagramChild = {
+  media_type: "IMAGE" | "VIDEO";
+  media_url?: string;
+  thumbnail_url?: string;
+};
 
 type InstagramMedia = {
   id: string;
@@ -13,11 +20,17 @@ type InstagramMedia = {
   thumbnail_url?: string;
   permalink: string;
   timestamp: string;
+  children?: { data: InstagramChild[] };
 };
 
 type InstagramMediaPage = {
   data: InstagramMedia[];
   paging?: { next?: string };
+};
+
+export type InstagramFeedData = {
+  reels: ImagePlaceholder[];
+  photos: ImagePlaceholder[];
 };
 
 let lastRefreshAt = 0;
@@ -32,21 +45,20 @@ function refreshTokenInBackground(token: string) {
   }).catch(() => {});
 }
 
-function toFeedItem(media: InstagramMedia): ImagePlaceholder {
-  const caption = media.caption?.split("\n")[0]?.trim();
-  const isVideo = media.media_type === "VIDEO";
-
-  return {
-    id: `insta-${media.id}`,
-    description: caption || "ISRA Ethnic on Instagram",
-    imageHint: "ethnic fashion",
-    imageUrl: isVideo ? media.thumbnail_url : media.media_url,
-    reelUrl: isVideo ? media.permalink : undefined,
-    permalink: media.permalink,
-  };
+function getCaption(media: InstagramMedia) {
+  return media.caption?.split("\n")[0]?.trim() || "ISRA Ethnic on Instagram";
 }
 
-export async function getInstagramFeed(token: string): Promise<ImagePlaceholder[]> {
+// Carousel media_url can point to a video when the first slide is a video, so use the first image slide.
+function getPhotoUrl(media: InstagramMedia) {
+  if (media.media_type !== "CAROUSEL_ALBUM") return media.media_url;
+
+  const slides = media.children?.data || [];
+  const firstImage = slides.find((slide) => slide.media_type === "IMAGE");
+  return firstImage?.media_url || slides[0]?.thumbnail_url || media.thumbnail_url;
+}
+
+export async function getInstagramFeed(token: string): Promise<InstagramFeedData> {
   refreshTokenInBackground(token);
 
   const items: InstagramMedia[] = [];
@@ -55,12 +67,34 @@ export async function getInstagramFeed(token: string): Promise<ImagePlaceholder[
 
   while (nextUrl && items.length < MAX_ITEMS) {
     const response = await fetch(nextUrl, { next: { revalidate: 600 } });
-    if (!response.ok) throw new Error(`Instagram request failed: ${response.status}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.error?.message || `Instagram request failed: ${response.status}`);
+    }
 
     const page = (await response.json()) as InstagramMediaPage;
     items.push(...page.data);
     nextUrl = page.paging?.next;
   }
 
-  return items.slice(0, MAX_ITEMS).map(toFeedItem);
+  const reels: ImagePlaceholder[] = [];
+  const photos: ImagePlaceholder[] = [];
+
+  for (const media of items.slice(0, MAX_ITEMS)) {
+    const base = {
+      id: `insta-${media.id}`,
+      description: getCaption(media),
+      imageHint: "ethnic fashion",
+      permalink: media.permalink,
+    };
+
+    if (media.media_type === "VIDEO") {
+      reels.push({ ...base, imageUrl: media.thumbnail_url, reelUrl: media.permalink });
+    } else {
+      const imageUrl = getPhotoUrl(media);
+      if (imageUrl) photos.push({ ...base, imageUrl });
+    }
+  }
+
+  return { reels, photos };
 }
