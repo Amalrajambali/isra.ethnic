@@ -1,25 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { PlaceHolderImages } from "@/app/lib/placeholder-images";
-import { ChevronLeft, ChevronRight, Instagram, Play } from "lucide-react";
+import { PlaceHolderImages, type ImagePlaceholder } from "@/app/lib/placeholder-images";
+import { ChevronLeft, ChevronRight, Instagram } from "lucide-react";
 
 const ITEMS_PER_PAGE = 8;
 
+const fallbackFeed = PlaceHolderImages.filter((p) => p.id.startsWith("insta-")).sort((a, b) => {
+  const aNumber = Number.parseInt(a.id.replace("insta-", ""), 10);
+  const bNumber = Number.parseInt(b.id.replace("insta-", ""), 10);
+
+  if (Number.isNaN(aNumber) || Number.isNaN(bNumber)) {
+    return b.id.localeCompare(a.id);
+  }
+
+  return bNumber - aNumber;
+});
+
 export function InstagramFeed() {
   const [currentPage, setCurrentPage] = useState(1);
-  const instaImages = useMemo(() => {
-    return PlaceHolderImages.filter((p) => p.id.startsWith("insta-")).sort((a, b) => {
-      const aNumber = Number.parseInt(a.id.replace("insta-", ""), 10);
-      const bNumber = Number.parseInt(b.id.replace("insta-", ""), 10);
+  const [instaImages, setInstaImages] = useState<ImagePlaceholder[]>(fallbackFeed);
 
-      if (Number.isNaN(aNumber) || Number.isNaN(bNumber)) {
-        return b.id.localeCompare(a.id);
-      }
-
-      return bNumber - aNumber;
-    });
+  useEffect(() => {
+    fetch("/api/instagram")
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((items: ImagePlaceholder[]) => items.length && setInstaImages(items))
+      .catch(() => setInstaImages(fallbackFeed));
   }, []);
 
   const totalPages = Math.ceil(instaImages.length / ITEMS_PER_PAGE);
@@ -71,19 +78,23 @@ export function InstagramFeed() {
           }
 
           return (
-            <div
+            <a
               key={img.id}
-              className="aspect-[9/16] relative group overflow-hidden rounded-2xl bg-card border border-primary/10"
+              href={img.permalink || "https://www.instagram.com/isra.ethnic"}
+              target="_blank"
+              rel="noreferrer"
+              className="block aspect-[9/16] relative group overflow-hidden rounded-2xl bg-card border border-primary/10"
             >
               <Image
                 src={img.imageUrl || ""}
                 alt={img.description}
                 fill
+                unoptimized
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                  <Play className="h-8 w-8 text-white fill-white" />
+                  <Instagram className="h-8 w-8 text-white" />
                 </div>
               </div>
               <div className="absolute bottom-4 left-4 right-4">
@@ -91,7 +102,7 @@ export function InstagramFeed() {
                   {img.description}
                 </p>
               </div>
-            </div>
+            </a>
           );
         })}
       </div>

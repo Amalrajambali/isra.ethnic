@@ -6,6 +6,7 @@ export type ImagePlaceholder = {
   imageUrl?: string;
   imageHint: string;
   reelUrl?: string;
+  permalink?: string;
   price?: string | number | null;
 };
 
