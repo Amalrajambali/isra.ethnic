@@ -5,6 +5,7 @@ const MEDIA_FIELDS =
   "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_type,media_url,thumbnail_url}";
 const MAX_ITEMS = 60;
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 type InstagramChild = {
   media_type: "IMAGE" | "VIDEO";
@@ -34,6 +35,7 @@ export type InstagramFeedData = {
 };
 
 let lastRefreshAt = 0;
+let cachedFeed: { data: InstagramFeedData; expiresAt: number } | null = null;
 
 // Long-lived tokens expire after 60 days unless refreshed, so extend it at most once a day.
 function refreshTokenInBackground(token: string) {
@@ -58,7 +60,16 @@ function getPhotoUrl(media: InstagramMedia) {
   return firstImage?.media_url || slides[0]?.thumbnail_url || media.thumbnail_url;
 }
 
+// Only successful responses are cached, so a fixed token or a recovered API shows up on the next request.
 export async function getInstagramFeed(token: string): Promise<InstagramFeedData> {
+  if (cachedFeed && cachedFeed.expiresAt > Date.now()) return cachedFeed.data;
+
+  const data = await fetchInstagramFeed(token);
+  cachedFeed = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+  return data;
+}
+
+async function fetchInstagramFeed(token: string): Promise<InstagramFeedData> {
   refreshTokenInBackground(token);
 
   const items: InstagramMedia[] = [];
@@ -66,7 +77,7 @@ export async function getInstagramFeed(token: string): Promise<InstagramFeedData
     `${GRAPH_URL}/me/media?fields=${MEDIA_FIELDS}&limit=25&access_token=${token}`;
 
   while (nextUrl && items.length < MAX_ITEMS) {
-    const response = await fetch(nextUrl, { next: { revalidate: 600 } });
+    const response: Response = await fetch(nextUrl, { cache: "no-store" });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
       throw new Error(body?.error?.message || `Instagram request failed: ${response.status}`);
