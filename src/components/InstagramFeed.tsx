@@ -9,6 +9,8 @@ import { Price } from "@/components/Price";
 
 const REELS_PER_PAGE = 6;
 const PHOTOS_PER_PAGE = 8;
+// Shown until a post has an admin or AI name; Instagram captions are never used as product names.
+const DEFAULT_PRODUCT_NAME = "ISRA Ethnic Design";
 const INSTAGRAM_PROFILE_URL = "https://www.instagram.com/isra.ethnic?igsh=dnhtNHQ5dGlwdmcw";
 
 const byNewestId = (a: ImagePlaceholder, b: ImagePlaceholder) => {
@@ -186,16 +188,18 @@ export function InstagramPhotos({ id }: { id?: string }) {
               {/* Instagram CDN links are signed and expire, so load them directly instead of through next/image. */}
               <img
                 src={photo.imageUrl}
-                alt={photo.description}
+                alt={photo.description || DEFAULT_PRODUCT_NAME}
                 loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             </a>
-            <p className="font-headline text-sm sm:text-base text-foreground line-clamp-2">{photo.description}</p>
+            <p className="font-headline text-sm sm:text-base text-foreground line-clamp-2">
+              {photo.description || DEFAULT_PRODUCT_NAME}
+            </p>
             <Price value={photo.price} className="text-sm sm:text-base font-semibold text-primary" />
             <button
               type="button"
-              onClick={() => openWhatsAppOrder(photo.description, photo.price, photo.permalink)}
+              onClick={() => openWhatsAppOrder(photo.description || DEFAULT_PRODUCT_NAME, photo.price, photo.permalink)}
               className="mt-auto flex w-full items-center justify-center gap-1.5 sm:gap-2 rounded-full bg-primary px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-95"
             >
               <WhatsAppIcon />

@@ -69,6 +69,9 @@ export async function takeDailyAiQuota(limit: number) {
 export const setPrice =(id: string, price: string | null) => setField(PRICES_KEY, id, price);
 export const setName = (id: string, name: string | null) => setField(NAMES_KEY, id, name);
 
+// AI names only fill an empty slot (HSETNX), so a name typed in /admin is never overwritten.
+export const setAiName = (id: string, name: string) => redis(["HSETNX", NAMES_KEY, id, name]);
+
 export function isAdminRequest(request: Request) {
   const expected = process.env.ADMIN_PASSWORD;
   const given = request.headers.get("x-admin-password");

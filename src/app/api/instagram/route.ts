@@ -7,6 +7,7 @@ import { fillMissingNames } from "@/lib/ai-names";
 export const dynamic = "force-dynamic";
 
 const AI_NAMES_PER_REQUEST = 4;
+const AI_WAIT_MS = 4000;
 
 const fallbackReels = () =>
   PlaceHolderImages.filter((item) => item.id.startsWith("insta-") && item.reelUrl);
@@ -31,14 +32,20 @@ export async function GET() {
     ]);
     if (!reels.length && !photos.length) return fallback("Instagram returned no posts");
 
+    // Name new posts now, but never hold the page longer than AI_WAIT_MS; slower ones finish after the response.
+    const naming = fillMissingNames(photos, names, AI_NAMES_PER_REQUEST);
+    after(() => naming);
+    const generated = await Promise.race([
+      naming,
+      new Promise<Record<string, string>>((resolve) => setTimeout(() => resolve({}), AI_WAIT_MS)),
+    ]);
+
+    // Only the admin name or the AI name is shown, never the Instagram caption.
     const pricedPhotos = photos.map((photo) => ({
       ...photo,
-      description: names[photo.id] || photo.description,
+      description: names[photo.id] || generated[photo.id] || "",
       price: prices[photo.id] || null,
     }));
-
-    // New posts get their AI name after the response is sent, so visitors never wait on Gemini.
-    after(() => fillMissingNames(photos, names, AI_NAMES_PER_REQUEST));
 
     // Short CDN cache so a price saved in /admin shows on the site within a minute.
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import type { ImagePlaceholder } from "@/app/lib/placeholder-images";
-import { setName, takeDailyAiQuota } from "@/lib/product-info";
+import { setAiName, takeDailyAiQuota } from "@/lib/product-info";
 
 // Kept on the free tier: the cheapest model, and a hard daily cap far below Google's free limits.
 // "-latest" follows Google's current model, so naming keeps working when old versions are retired.
@@ -8,9 +8,12 @@ const GEMINI_URL =
 const DAILY_AI_LIMIT = 30;
 
 const PROMPT = `You name products for ISRA Ethnic, a saree and churidar boutique in Kerala.
-Look at the photo and give this outfit a short product name of exactly 2 words:
-a colour or fabric word, then the garment style.
-Examples: "Maroon Kanjeevaram", "Mint Anarkali", "Ivory Kasavu", "Teal Organza", "Peach Churidar".
+Look at the photo and give the outfit a stylish product name of exactly 2 words:
+- First word: the main colour as seen in the photo, as an elegant fashion colour name
+  (e.g. Maroon, Wine, Peach, Mint, Mustard, Teal, Ivory, Rust, Lavender, Navy, Blush, Emerald).
+- Second word: a stylish word for the garment, fabric or style
+  (e.g. Saree, Churidar, Kanjeevaram, Kasavu, Anarkali, Organza, Banarasi, Chiffon, Silk, Elegance).
+Examples: "Maroon Kanjeevaram", "Mint Anarkali", "Ivory Kasavu", "Blush Organza", "Navy Churidar", "Emerald Silk".
 Reply with only the 2 words.`;
 
 const BATCH_SIZE = 2;
@@ -19,15 +22,12 @@ const FAILURE_PAUSE_MS = 10 * 60 * 1000;
 const inProgress = new Set<string>();
 let pausedUntil = 0;
 
-function cleanName(text: string) {
-  const words = text
-    .replace(/[^\p{L}\s-]/gu, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+const capitalize = (word: string) => word[0].toUpperCase() + word.slice(1).toLowerCase();
 
-  if (!words.length) return null;
-  return words.map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase()).join(" ");
+// Keeps the first 2 words in Title Case, dropping quotes, markdown or anything extra the model adds.
+export function cleanName(text: string) {
+  const words = text.replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean).slice(0, 2);
+  return words.length ? words.map(capitalize).join(" ") : null;
 }
 
 async function generateProductName(imageUrl: string, caption: string, apiKey: string) {
@@ -88,10 +88,8 @@ export async function fillMissingNames(
             return;
           }
           const name = await generateProductName(photo.imageUrl!, photo.description, apiKey);
-          if (name) {
-            await setName(photo.id, name);
-            generated[photo.id] = name;
-          }
+          // HSETNX returns 0 when a manual name was saved meanwhile; keep showing that one.
+          if (name && (await setAiName(photo.id, name))) generated[photo.id] = name;
         } catch (error) {
           pausedUntil = Date.now() + FAILURE_PAUSE_MS;
           console.error("AI name error:", error instanceof Error ? error.message : error);
