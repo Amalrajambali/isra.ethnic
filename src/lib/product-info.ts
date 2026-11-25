@@ -1,13 +1,16 @@
 import { timingSafeEqual } from "node:crypto";
 
 // Prices and product names live in Redis hashes (post id -> value), set from /admin or by the AI namer.
+// Hidden posts (greetings, announcements) are a Redis set of post ids.
 // Vercel's Upstash integration sets KV_REST_API_*; a direct Upstash database sets UPSTASH_REDIS_REST_*.
 const PRICES_KEY = "isra:prices";
 const NAMES_KEY = "isra:names";
+const HIDDEN_KEY = "isra:hidden";
 
 export type ProductInfo = {
   prices: Record<string, string>;
   names: Record<string, string>;
+  hidden: Set<string>;
 };
 
 function getRedisConfig() {
@@ -44,8 +47,12 @@ async function setField(key: string, id: string, value: string | null) {
 }
 
 export async function getProductInfo(): Promise<ProductInfo> {
-  const [prices, names] = await Promise.all([getHash(PRICES_KEY), getHash(NAMES_KEY)]);
-  return { prices, names };
+  const [prices, names, hidden] = await Promise.all([
+    getHash(PRICES_KEY),
+    getHash(NAMES_KEY),
+    redis<string[]>(["SMEMBERS", HIDDEN_KEY]),
+  ]);
+  return { prices, names, hidden: new Set(hidden) };
 }
 
 // The website must keep working when storage is down or not set up yet, just without prices and names.
@@ -54,7 +61,7 @@ export async function getProductInfoSafe(): Promise<ProductInfo> {
     return await getProductInfo();
   } catch (error) {
     console.error("Price storage error:", error instanceof Error ? error.message : error);
-    return { prices: {}, names: {} };
+    return { prices: {}, names: {}, hidden: new Set() };
   }
 }
 
@@ -66,8 +73,9 @@ export async function takeDailyAiQuota(limit: number) {
   return count <= limit;
 }
 
-export const setPrice =(id: string, price: string | null) => setField(PRICES_KEY, id, price);
+export const setPrice = (id: string, price: string | null) => setField(PRICES_KEY, id, price);
 export const setName = (id: string, name: string | null) => setField(NAMES_KEY, id, name);
+export const setHidden = (id: string, hidden: boolean) => redis([hidden ? "SADD" : "SREM", HIDDEN_KEY, id]);
 
 // AI names only fill an empty slot (HSETNX), so a name typed in /admin is never overwritten.
 export const setAiName = (id: string, name: string) => redis(["HSETNX", NAMES_KEY, id, name]);

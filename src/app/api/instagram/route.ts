@@ -26,11 +26,15 @@ export async function GET() {
   if (!token) return fallback("INSTAGRAM_ACCESS_TOKEN is not set");
 
   try {
-    const [{ reels, photos }, { prices, names }] = await Promise.all([
+    const [feed, { prices, names, hidden }] = await Promise.all([
       getInstagramFeed(token),
       getProductInfoSafe(),
     ]);
-    if (!reels.length && !photos.length) return fallback("Instagram returned no posts");
+    const { reels } = feed;
+    if (!reels.length && !feed.photos.length) return fallback("Instagram returned no posts");
+
+    // Posts hidden in /admin (greetings, announcements) are left out and never sent to the AI.
+    const photos = feed.photos.filter((photo) => !hidden.has(photo.id));
 
     // Name new posts now, but never hold the page longer than AI_WAIT_MS; slower ones finish after the response.
     const naming = fillMissingNames(photos, names, AI_NAMES_PER_REQUEST);
@@ -50,7 +54,7 @@ export async function GET() {
     // Short CDN cache so a price saved in /admin shows on the site within a minute.
     return NextResponse.json(
       { source: "instagram", reels: reels.length ? reels : fallbackReels(), photos: pricedPhotos },
-      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60" } }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Instagram request failed";

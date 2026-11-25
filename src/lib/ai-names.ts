@@ -17,7 +17,9 @@ Examples: "Maroon Kanjeevaram", "Mint Anarkali", "Ivory Kasavu", "Blush Organza"
 Reply with only the 2 words.`;
 
 const BATCH_SIZE = 2;
-const FAILURE_PAUSE_MS = 10 * 60 * 1000;
+// Errors are usually temporary (model busy), so pause briefly; the daily cap pauses longer.
+const FAILURE_PAUSE_MS = 2 * 60 * 1000;
+const LIMIT_PAUSE_MS = 30 * 60 * 1000;
 
 const inProgress = new Set<string>();
 let pausedUntil = 0;
@@ -25,10 +27,14 @@ let pausedUntil = 0;
 const capitalize = (word: string) => word[0].toUpperCase() + word.slice(1).toLowerCase();
 
 // Keeps the first 2 words in Title Case, dropping quotes, markdown or anything extra the model adds.
+// Rejects broken answers like "Slate S", so the post is simply named again later.
 export function cleanName(text: string) {
   const words = text.replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean).slice(0, 2);
-  return words.length ? words.map(capitalize).join(" ") : null;
+  if (words.length !== 2 || words.some((word) => word.length < 3)) return null;
+  return words.map(capitalize).join(" ");
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function generateProductName(imageUrl: string, caption: string, apiKey: string) {
   const image = await fetch(imageUrl, { cache: "no-store" });
@@ -37,29 +43,38 @@ async function generateProductName(imageUrl: string, caption: string, apiKey: st
   const mimeType = image.headers.get("content-type")?.split(";")[0] || "image/jpeg";
   const data = Buffer.from(await image.arrayBuffer()).toString("base64");
 
-  const response = await fetch(GEMINI_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: `${PROMPT}\n\nInstagram caption (may be empty or unrelated): ${caption}` },
-            { inline_data: { mime_type: mimeType, data } },
-          ],
-        },
-      ],
-      generationConfig: { maxOutputTokens: 200, temperature: 0.4 },
-    }),
-    cache: "no-store",
-  });
+  const request = () =>
+    fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: `${PROMPT}\n\nInstagram caption (may be empty or unrelated): ${caption}` },
+              { inline_data: { mime_type: mimeType, data } },
+            ],
+          },
+        ],
+        generationConfig: { maxOutputTokens: 200, temperature: 0.4 },
+      }),
+      cache: "no-store",
+    });
+
+  // "Model is busy" (503) is usually gone within seconds, so retry once before giving up.
+  let response = await request();
+  if (response.status === 503) {
+    await sleep(2000);
+    response = await request();
+  }
 
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.error?.message || `Gemini request failed: ${response.status}`);
 
+  // The answer can arrive split across parts mid-word ("Slate S" + "aree"), so join without spaces.
   const text = (body?.candidates?.[0]?.content?.parts || [])
     .map((part: { text?: string }) => part.text || "")
-    .join(" ");
+    .join("");
   return cleanName(text);
 }
 
@@ -84,7 +99,7 @@ export async function fillMissingNames(
         inProgress.add(photo.id);
         try {
           if (!(await takeDailyAiQuota(DAILY_AI_LIMIT))) {
-            pausedUntil = Date.now() + FAILURE_PAUSE_MS;
+            pausedUntil = Date.now() + LIMIT_PAUSE_MS;
             return;
           }
           const name = await generateProductName(photo.imageUrl!, photo.description, apiKey);

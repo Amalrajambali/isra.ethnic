@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Check, Eye, EyeOff, IndianRupee, Loader2, Sparkles, X } from "lucide-react";
 
+type Filter = "all" | "missing" | "hidden";
+
 type Post = {
   id: string;
   caption: string;
@@ -10,6 +12,7 @@ type Post = {
   imageUrl?: string;
   permalink?: string;
   price: string | null;
+  hidden: boolean;
 };
 
 type RowState = {
@@ -49,7 +52,7 @@ export default function AdminPricesPage() {
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<"all" | "missing">("all");
+  const [filter, setFilter] = useState<Filter>("all");
 
   async function load(pass: string) {
     setLoading(true);
@@ -83,8 +86,9 @@ export default function AdminPricesPage() {
   }
 
   // Sends only the fields given, e.g. { price: "" } from Clear leaves the name alone.
-  async function save(post: Post, fields: { name?: string; price?: string }) {
-    updateRow(post.id, { ...fields, status: "saving" });
+  async function save(post: Post, fields: { name?: string; price?: string; hidden?: boolean }) {
+    const { hidden: _hidden, ...rowFields } = fields;
+    updateRow(post.id, { ...rowFields, status: "saving" });
 
     try {
       const response = await fetch("/api/admin/prices", {
@@ -98,6 +102,7 @@ export default function AdminPricesPage() {
       const saved: Partial<Post> = {};
       if ("price" in body) saved.price = body.price;
       if ("name" in body) saved.name = body.name || "";
+      if ("hidden" in body) saved.hidden = body.hidden;
 
       const updated = { ...post, ...saved };
       setPosts((current) => current?.map((p) => (p.id === post.id ? updated : p)) ?? null);
@@ -150,8 +155,15 @@ export default function AdminPricesPage() {
     );
   }
 
-  const missingCount = posts.filter((post) => !post.price).length;
-  const visiblePosts = filter === "missing" ? posts.filter((post) => !post.price) : posts;
+  const shownPosts = posts.filter((post) => !post.hidden);
+  const hiddenPosts = posts.filter((post) => post.hidden);
+  const missingPosts = shownPosts.filter((post) => !post.price);
+  const filters: Record<Filter, { label: string; posts: Post[] }> = {
+    all: { label: `All (${posts.length})`, posts },
+    missing: { label: `No price (${missingPosts.length})`, posts: missingPosts },
+    hidden: { label: `Hidden (${hiddenPosts.length})`, posts: hiddenPosts },
+  };
+  const visiblePosts = filters[filter].posts;
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -178,7 +190,7 @@ export default function AdminPricesPage() {
         </div>
 
         <div className="flex gap-2 text-sm">
-          {(["all", "missing"] as const).map((option) => (
+          {(Object.keys(filters) as Filter[]).map((option) => (
             <button
               key={option}
               type="button"
@@ -187,7 +199,7 @@ export default function AdminPricesPage() {
                 filter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-white"
               }`}
             >
-              {option === "all" ? `All (${posts.length})` : `No price (${missingCount})`}
+              {filters[option].label}
             </button>
           ))}
         </div>
@@ -200,7 +212,10 @@ export default function AdminPricesPage() {
             const saving = row.status === "saving";
 
             return (
-              <li key={post.id} className="flex gap-3 rounded-xl border border-border bg-white p-3">
+              <li
+                key={post.id}
+                className={`flex gap-3 rounded-xl border border-border p-3 ${post.hidden ? "bg-muted/60 opacity-70" : "bg-white"}`}
+              >
                 <a href={post.permalink} target="_blank" rel="noreferrer" className="shrink-0">
                   <img src={post.imageUrl} alt="" className="h-28 w-20 rounded-lg object-cover bg-muted" />
                 </a>
@@ -214,9 +229,22 @@ export default function AdminPricesPage() {
                   }}
                   className="min-w-0 flex-1 space-y-2"
                 >
-                  <p className="line-clamp-1 text-xs text-muted-foreground" title={post.caption}>
-                    Caption: {post.caption}
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="line-clamp-1 text-xs text-muted-foreground" title={post.caption}>
+                      {post.hidden && <span className="mr-1 font-bold text-red-600">HIDDEN ·</span>}
+                      Caption: {post.caption}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => save(post, { hidden: !post.hidden })}
+                      title={post.hidden ? "Show this post on the website" : "Hide this post from the website (e.g. greetings)"}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40"
+                    >
+                      {post.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      {post.hidden ? "Show on website" : "Hide from website"}
+                    </button>
+                  </div>
 
                   <label className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-label="Name" />

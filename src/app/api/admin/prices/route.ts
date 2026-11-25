@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInstagramFeed } from "@/lib/instagram";
-import { getProductInfo, isAdminRequest, setName, setPrice } from "@/lib/product-info";
+import { getProductInfo, isAdminRequest, setHidden, setName, setPrice } from "@/lib/product-info";
 import { fillMissingNames } from "@/lib/ai-names";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,8 @@ export async function GET(request: Request) {
 
   try {
     const [{ photos }, info] = await Promise.all([getInstagramFeed(token), getProductInfo()]);
-    const names = { ...info.names, ...(await fillMissingNames(photos, info.names, AI_NAMES_PER_LOAD)) };
+    const visible = photos.filter((photo) => !info.hidden.has(photo.id));
+    const names = { ...info.names, ...(await fillMissingNames(visible, info.names, AI_NAMES_PER_LOAD)) };
 
     return NextResponse.json(
       {
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
           permalink: photo.permalink,
           name: names[photo.id] || "",
           price: info.prices[photo.id] || null,
+          hidden: info.hidden.has(photo.id),
         })),
       },
       { headers: noStore }
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Body: { id, price?, name? }. Only the fields sent are changed; an empty value removes it.
+// Body: { id, price?, name?, hidden? }. Only the fields sent are changed; an empty price/name removes it.
 export async function POST(request: Request) {
   if (!isAdminRequest(request)) return error("Wrong password", 401);
 
@@ -52,7 +54,8 @@ export async function POST(request: Request) {
 
   const hasPrice = body && "price" in body;
   const hasName = body && "name" in body;
-  if (!hasPrice && !hasName) return error("Nothing to save", 400);
+  const hasHidden = body && typeof body.hidden === "boolean";
+  if (!hasPrice && !hasName && !hasHidden) return error("Nothing to save", 400);
 
   const price = hasPrice ? String(body.price ?? "").replace(/[,\s₹]|rs\.?/gi, "") : "";
   const name = hasName ? String(body.name ?? "").replace(/\s+/g, " ").trim() : "";
@@ -64,12 +67,14 @@ export async function POST(request: Request) {
     await Promise.all([
       hasPrice ? setPrice(id, price || null) : null,
       hasName ? setName(id, name || null) : null,
+      hasHidden ? setHidden(id, body.hidden) : null,
     ]);
     return NextResponse.json(
       {
         id,
         ...(hasPrice && { price: price || null }),
         ...(hasName && { name: name || null }),
+        ...(hasHidden && { hidden: body.hidden }),
       },
       { headers: noStore }
     );
