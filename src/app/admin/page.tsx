@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Check, Eye, EyeOff, IndianRupee, Loader2, Sparkles, X } from "lucide-react";
 
 type Post = {
   id: string;
-  description: string;
+  caption: string;
+  name: string;
   imageUrl?: string;
   permalink?: string;
   price: string | null;
 };
 
-type RowState = { value: string; status: "idle" | "saving" | "saved" | "error"; message?: string };
+type RowState = {
+  name: string;
+  price: string;
+  status: "idle" | "saving" | "saved" | "error";
+  message?: string;
+};
 
 const PASSWORD_KEY = "isra-admin-password";
 
@@ -30,6 +36,10 @@ function rememberPassword(password: string | null) {
   } catch {
     // Private browsing can block storage; the admin just has to log in again.
   }
+}
+
+function rowFromPost(post: Post): RowState {
+  return { name: post.name, price: post.price || "", status: "idle" };
 }
 
 export default function AdminPricesPage() {
@@ -51,11 +61,7 @@ export default function AdminPricesPage() {
 
       rememberPassword(pass);
       setPosts(body.posts);
-      setRows(
-        Object.fromEntries(
-          (body.posts as Post[]).map((post) => [post.id, { value: post.price || "", status: "idle" }])
-        )
-      );
+      setRows(Object.fromEntries((body.posts as Post[]).map((post) => [post.id, rowFromPost(post)])));
     } catch (err) {
       if (err instanceof Error && err.message === "Wrong password") rememberPassword(null);
       setError(err instanceof Error ? err.message : "Could not load posts");
@@ -72,24 +78,32 @@ export default function AdminPricesPage() {
     }
   }, []);
 
-  async function save(post: Post) {
-    const value = rows[post.id]?.value.trim() ?? "";
-    setRows((current) => ({ ...current, [post.id]: { value, status: "saving" } }));
+  function updateRow(id: string, changes: Partial<RowState>) {
+    setRows((current) => ({ ...current, [id]: { ...current[id], status: "idle", ...changes } }));
+  }
+
+  // Sends only the fields given, e.g. { price: "" } from Clear leaves the name alone.
+  async function save(post: Post, fields: { name?: string; price?: string }) {
+    updateRow(post.id, { ...fields, status: "saving" });
 
     try {
       const response = await fetch("/api/admin/prices", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-password": password },
-        body: JSON.stringify({ id: post.id, price: value }),
+        body: JSON.stringify({ id: post.id, ...fields }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not save");
 
-      setPosts((current) => current?.map((p) => (p.id === post.id ? { ...p, price: body.price } : p)) ?? null);
-      setRows((current) => ({ ...current, [post.id]: { value: body.price || "", status: "saved" } }));
+      const saved: Partial<Post> = {};
+      if ("price" in body) saved.price = body.price;
+      if ("name" in body) saved.name = body.name || "";
+
+      const updated = { ...post, ...saved };
+      setPosts((current) => current?.map((p) => (p.id === post.id ? updated : p)) ?? null);
+      setRows((current) => ({ ...current, [post.id]: { ...rowFromPost(updated), status: "saved" } }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save";
-      setRows((current) => ({ ...current, [post.id]: { value, status: "error", message } }));
+      updateRow(post.id, { status: "error", message: err instanceof Error ? err.message : "Could not save" });
     }
   }
 
@@ -129,7 +143,7 @@ export default function AdminPricesPage() {
             className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Log in
+            {loading ? "Loading posts (naming new ones)..." : "Log in"}
           </button>
         </form>
       </main>
@@ -146,7 +160,8 @@ export default function AdminPricesPage() {
           <div>
             <h1 className="font-headline text-2xl sm:text-3xl text-primary">Instagram Prices</h1>
             <p className="text-sm text-muted-foreground">
-              Leave a price empty to show &quot;Ask Price&quot; on the website. Changes appear within a minute.
+              Names are suggested by AI. Edit them if needed, or clear a name and reload for a new suggestion.
+              Changes appear on the website within a minute.
             </p>
           </div>
           <button
@@ -179,47 +194,76 @@ export default function AdminPricesPage() {
 
         <ul className="space-y-3">
           {visiblePosts.map((post) => {
-            const row = rows[post.id] || { value: "", status: "idle" };
-            const changed = row.value.trim() !== (post.price || "");
+            const row = rows[post.id] || rowFromPost(post);
+            const nameChanged = row.name.trim() !== post.name;
+            const priceChanged = row.price.trim() !== (post.price || "");
+            const saving = row.status === "saving";
 
             return (
-              <li key={post.id} className="flex items-center gap-3 rounded-xl border border-border bg-white p-3">
+              <li key={post.id} className="flex gap-3 rounded-xl border border-border bg-white p-3">
                 <a href={post.permalink} target="_blank" rel="noreferrer" className="shrink-0">
-                  <img src={post.imageUrl} alt="" className="h-20 w-16 rounded-lg object-cover bg-muted" />
+                  <img src={post.imageUrl} alt="" className="h-28 w-20 rounded-lg object-cover bg-muted" />
                 </a>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <p className="line-clamp-2 text-sm font-semibold">{post.description}</p>
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      save(post);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-muted-foreground">₹</span>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    save(post, {
+                      ...(nameChanged && { name: row.name.trim() }),
+                      ...(priceChanged && { price: row.price.trim() }),
+                    });
+                  }}
+                  className="min-w-0 flex-1 space-y-2"
+                >
+                  <p className="line-clamp-1 text-xs text-muted-foreground" title={post.caption}>
+                    Caption: {post.caption}
+                  </p>
+
+                  <label className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-label="Name" />
                     <input
-                      inputMode="numeric"
-                      value={row.value}
-                      onChange={(event) =>
-                        setRows((current) => ({
-                          ...current,
-                          [post.id]: { value: event.target.value, status: "idle" },
-                        }))
-                      }
-                      placeholder="Price"
-                      className="w-28 rounded-lg border border-border px-3 py-1.5"
+                      value={row.name}
+                      onChange={(event) => updateRow(post.id, { name: event.target.value })}
+                      placeholder="Name (AI suggestion pending)"
+                      maxLength={40}
+                      className="w-full min-w-0 rounded-lg border border-border px-3 py-1.5 text-sm font-semibold"
                     />
+                  </label>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <IndianRupee className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        inputMode="numeric"
+                        value={row.price}
+                        onChange={(event) => updateRow(post.id, { price: event.target.value })}
+                        placeholder="Price"
+                        className="w-32 rounded-lg border border-border py-1.5 pl-8 pr-3"
+                      />
+                    </div>
                     <button
                       type="submit"
-                      disabled={!changed || row.status === "saving"}
+                      disabled={(!nameChanged && !priceChanged) || saving}
                       className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
                     >
-                      {row.status === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                     </button>
-                    {row.status === "saved" && !changed && <Check className="h-4 w-4 text-green-600" />}
-                  </form>
+                    {(post.price || row.price) && (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => (post.price ? save(post, { price: "" }) : updateRow(post.id, { price: "" }))}
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:border-red-300 hover:text-red-600 disabled:opacity-40"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Clear price
+                      </button>
+                    )}
+                    {row.status === "saved" && !nameChanged && !priceChanged && (
+                      <Check className="h-4 w-4 text-green-600" aria-label="Saved" />
+                    )}
+                  </div>
                   {row.status === "error" && <p className="text-xs text-red-600">{row.message}</p>}
-                </div>
+                </form>
               </li>
             );
           })}

@@ -7,7 +7,8 @@ import { getCatalogItems } from "@/lib/catalog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
-import { formatPrice, openWhatsAppOrder } from "@/lib/whatsapp";
+import { openWhatsAppOrder } from "@/lib/whatsapp";
+import { Price } from "@/components/Price";
 
 const ITEMS_PER_PAGE_DESKTOP = 3;
 const ITEMS_PER_PAGE_MOBILE = 2;
@@ -123,9 +124,7 @@ export function CatalogGrid() {
                 </h3>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">Designer Series</p>
-                  <p className="text-sm sm:text-base font-semibold text-primary">
-                    {formatPrice(imgData.price)}
-                  </p>
+                  <Price value={imgData.price} className="text-sm sm:text-base font-semibold text-primary" />
                 </div>
               </div>
             </div>

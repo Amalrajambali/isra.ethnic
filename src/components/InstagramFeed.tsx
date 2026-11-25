@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { PlaceHolderImages, type ImagePlaceholder } from "@/app/lib/placeholder-images";
 import { ChevronLeft, ChevronRight, Instagram } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
-import { formatPrice, openWhatsAppOrder } from "@/lib/whatsapp";
+import { openWhatsAppOrder } from "@/lib/whatsapp";
+import { Price } from "@/components/Price";
 
 const REELS_PER_PAGE = 6;
 const PHOTOS_PER_PAGE = 8;
@@ -191,7 +192,7 @@ export function InstagramPhotos({ id }: { id?: string }) {
               />
             </a>
             <p className="font-headline text-sm sm:text-base text-foreground line-clamp-2">{photo.description}</p>
-            <p className="text-sm sm:text-base font-semibold text-primary">{formatPrice(photo.price)}</p>
+            <Price value={photo.price} className="text-sm sm:text-base font-semibold text-primary" />
             <button
               type="button"
               onClick={() => openWhatsAppOrder(photo.description, photo.price, photo.permalink)}
