@@ -47,8 +47,14 @@ function refreshTokenInBackground(token: string) {
   }).catch(() => {});
 }
 
+// Use the first line that isn't just hashtags, so the title reads like a product name.
 function getCaption(media: InstagramMedia) {
-  return media.caption?.split("\n")[0]?.trim() || "ISRA Ethnic on Instagram";
+  const lines = (media.caption || "")
+    .split("\n")
+    .map((line) => line.replace(/#\S+/g, "").trim())
+    .filter(Boolean);
+
+  return lines[0] || "ISRA Ethnic on Instagram";
 }
 
 // Carousel media_url can point to a video when the first slide is a video, so use the first image slide.

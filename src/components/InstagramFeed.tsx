@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { PlaceHolderImages, type ImagePlaceholder } from "@/app/lib/placeholder-images";
 import { ChevronLeft, ChevronRight, Instagram } from "lucide-react";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
+import { formatPrice, openWhatsAppOrder } from "@/lib/whatsapp";
 
 const REELS_PER_PAGE = 6;
 const PHOTOS_PER_PAGE = 8;
@@ -173,24 +175,32 @@ export function InstagramPhotos({ id }: { id?: string }) {
       <SectionHeading title="Latest Collection" showFollow />
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
         {photoPages.pageItems.map((photo) => (
-          <a
-            key={photo.id}
-            href={photo.permalink || INSTAGRAM_PROFILE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="block aspect-[4/5] relative group overflow-hidden rounded-2xl bg-card border border-primary/10"
-          >
-            {/* Instagram CDN links are signed and expire, so load them directly instead of through next/image. */}
-            <img
-              src={photo.imageUrl}
-              alt={photo.description}
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              <p className="text-xs font-semibold text-white line-clamp-2">{photo.description}</p>
-            </div>
-          </a>
+          <div key={photo.id} className="group flex flex-col gap-2 sm:gap-3">
+            <a
+              href={photo.permalink || INSTAGRAM_PROFILE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="block aspect-[4/5] relative overflow-hidden rounded-2xl bg-card border border-primary/10"
+            >
+              {/* Instagram CDN links are signed and expire, so load them directly instead of through next/image. */}
+              <img
+                src={photo.imageUrl}
+                alt={photo.description}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            </a>
+            <p className="font-headline text-sm sm:text-base text-foreground line-clamp-2">{photo.description}</p>
+            <p className="text-sm sm:text-base font-semibold text-primary">{formatPrice(photo.price)}</p>
+            <button
+              type="button"
+              onClick={() => openWhatsAppOrder(photo.description, photo.price, photo.permalink)}
+              className="mt-auto flex w-full items-center justify-center gap-1.5 sm:gap-2 rounded-full bg-primary px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-95"
+            >
+              <WhatsAppIcon />
+              {photo.price ? "Order Now" : "Ask Price"}
+            </button>
+          </div>
         ))}
       </div>
       <Pagination {...photoPages} />

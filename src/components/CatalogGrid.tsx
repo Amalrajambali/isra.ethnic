@@ -6,30 +6,12 @@ import { PlaceHolderImages } from "@/app/lib/placeholder-images";
 import { getCatalogItems } from "@/lib/catalog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
+import { formatPrice, openWhatsAppOrder } from "@/lib/whatsapp";
 
-const WHATSAPP_NUMBER = "918113081120";
 const ITEMS_PER_PAGE_DESKTOP = 3;
 const ITEMS_PER_PAGE_MOBILE = 2;
 const fallbackCatalog = PlaceHolderImages.filter((item) => item.id.startsWith("catalog-"));
-
-function formatPrice(price?: string | number | null) {
-  if (!price) return "Price on request";
-  const value = String(price).trim();
-  return value.startsWith("Rs.") ? value : `Rs.${value}`;
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4 shrink-0"
-      fill="currentColor"
-    >
-      <path d="M12.04 2c-5.52 0-10 4.36-10 9.74 0 1.94.59 3.84 1.7 5.48L2 22l4.94-1.59c1.57.87 3.36 1.32 5.1 1.32h.01c5.52 0 10-4.36 10-9.74C22.05 6.36 17.57 2 12.04 2Zm0 17.65c-1.54 0-3.06-.41-4.41-1.19l-.32-.19-2.93.94.96-2.82-.21-.34a7.93 7.93 0 0 1-1.24-4.23c0-4.44 3.72-8.05 8.3-8.05 4.58 0 8.3 3.61 8.3 8.05 0 4.45-3.72 8.03-8.3 8.03Zm4.55-5.77c-.25-.12-1.47-.71-1.7-.8-.23-.09-.39-.12-.55.12-.16.23-.63.8-.77.96-.14.16-.28.18-.53.06-.25-.12-1.06-.38-2.02-1.22-.75-.66-1.25-1.48-1.4-1.73-.15-.25-.02-.38.1-.5.1-.1.25-.28.38-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.31-.75-1.79-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.42.06-.64.3-.22.24-.84.8-.84 1.95 0 1.16.86 2.28.98 2.44.12.16 1.68 2.57 4.07 3.6.57.24 1.01.39 1.36.5.57.18 1.09.15 1.5.09.46-.07 1.47-.6 1.68-1.17.2-.57.2-1.05.14-1.15-.06-.1-.22-.16-.47-.28Z" />
-    </svg>
-  );
-}
 
 export function CatalogGrid() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,13 +44,6 @@ export function CatalogGrid() {
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
-
-  const handleWhatsApp = (dressName: string, price?: string | number | null) => {
-    const message = encodeURIComponent(
-      `👗 Interested in this design!\n\n*${dressName}*${price ? `\nPrice: ${formatPrice(price)}` : ""}\n\nCan you confirm available sizes?\n\n🛍️ ISRA Ethnic - Tirur, Kerala`
-    );
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
-  };
 
   return (
     <div className="space-y-8">
@@ -118,7 +93,7 @@ export function CatalogGrid() {
                       Interested in this design?
                     </p>
                     <button
-                      onClick={() => handleWhatsApp(imgData.description, imgData.price)}
+                      onClick={() => openWhatsAppOrder(imgData.description, imgData.price)}
                       className="
                       flex items-center gap-1.5 sm:gap-2.5 w-full justify-center
                       px-2 sm:px-4 py-2 sm:py-2.5 rounded
