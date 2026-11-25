@@ -51,10 +51,11 @@ export async function GET() {
       price: prices[photo.id] || null,
     }));
 
-    // Short CDN cache so a price saved in /admin shows on the site within a minute.
+    // Visitors always get the CDN copy instantly; once it is over a minute old, the next request refreshes it
+    // in the background. So nobody waits on Instagram or the AI, and admin changes still appear within a visit or two.
     return NextResponse.json(
       { source: "instagram", reels: reels.length ? reels : fallbackReels(), photos: pricedPhotos },
-      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=86400" } }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Instagram request failed";

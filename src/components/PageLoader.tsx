@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { loadFeed } from "@/components/InstagramFeed";
 
 // Never keep visitors waiting longer than this, even if Instagram or the network is slow.
-const MAX_WAIT_MS = 8000;
-// Only the photos visible on the first page need to be downloaded before the site is shown.
-const PHOTOS_TO_PRELOAD = 8;
+const MAX_WAIT_MS = 5000;
+// Wait only for the first row of photos (2x2 on phones, one row on desktop); the rest load while browsing.
+const PHOTOS_TO_PRELOAD = 4;
 
 function preloadImage(url?: string) {
   return new Promise<void>((resolve) => {
