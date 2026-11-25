@@ -6,7 +6,8 @@ import { Star, Heart, User } from "lucide-react";
 
 export function Hero() {
     const handleViewCollection = () => {
-        const catalog = document.getElementById("catalog");
+        // Latest Collection is hidden when Instagram has no photos, so fall back to the catalog.
+        const catalog = document.getElementById("collection") || document.getElementById("catalog");
         if (catalog) {
             catalog.scrollIntoView({ behavior: "smooth" });
         }

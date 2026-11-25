@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkles, Loader2, Shirt } from "lucide-react";
+import type { RecommendDrapeOutput } from "@/ai/flows/ai-personal-drape-tool";
 
 export function DrapeTool() {
   const [occasion, setOccasion] = useState("");

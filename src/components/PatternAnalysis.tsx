@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Palette, Loader2, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { PatternTrendAnalysisToolOutput } from "@/ai/flows/pattern-trend-analysis-tool";
 
 export function PatternAnalysis() {
   const [description, setDescription] = useState("");

@@ -1,4 +1,5 @@
 import { Hero } from "@/components/Hero";
+import { SiteNav } from "@/components/SiteNav";
 import { CatalogGrid } from "@/components/CatalogGrid";
 import { DrapeTool } from "@/components/DrapeTool";
 import { PatternAnalysis } from "@/components/PatternAnalysis";
@@ -10,24 +11,13 @@ import { Instagram, Facebook } from "lucide-react";
 export default function Home() {
   return (
     <main className="min-h-screen bg-background text-foreground pt-20">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/30">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="font-headline text-2xl tracking-tighter text-primary font-bold">
-            ISRA <span className="text-foreground font-light">ETHNIC</span>
-          </div>
-          <div className="hidden md:flex gap-10 text-xs uppercase tracking-[0.2em] font-bold text-muted-foreground">
-            <a href="#catalog" className="hover:text-primary transition-colors">Catalog</a>
-            <a href="#styling" className="hover:text-primary transition-colors">AI Stylist</a>
-            <a href="#social" className="hover:text-primary transition-colors">Social</a>
-            <a href="#location" className="hover:text-primary transition-colors">Contact</a>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       <Hero />
 
       <div className="container mx-auto px-4 sm:px-6">
+        <InstagramPhotos id="collection" />
+
         <section id="catalog" className="py-12 sm:py-24 space-y-8 sm:space-y-16">
           <div className="text-center max-w-2xl mx-auto space-y-4">
             <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl text-foreground">The Signature Series</h2>
@@ -38,8 +28,6 @@ export default function Home() {
           </div>
           <CatalogGrid />
         </section>
-
-        <InstagramPhotos id="collection" />
 
         <section id="styling" className="py-12 sm:py-24 bg-accent/10 -mx-4 sm:-mx-6 px-4 sm:px-6">
           <div className="container mx-auto">

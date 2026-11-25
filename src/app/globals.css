@@ -28,6 +28,11 @@
 }
 
 @layer base {
+  /* Menu links jump to sections; keep their headings clear of the fixed 80px header. */
+  html {
+    scroll-padding-top: 5rem;
+  }
+
   * {
     @apply border-border;
   }

@@ -74,11 +74,11 @@ export function CatalogGrid() {
                   />
                 )}
 
-                {/* Hover overlay — slides up from bottom */}
+                {/* Overlay slides up on hover; touch screens can't hover, so there it is always shown. */}
                 <div className="absolute inset-0 flex flex-col justify-end pointer-events-none">
                   <div
                     className="
-                    translate-y-full group-hover:translate-y-0
+                    translate-y-full group-hover:translate-y-0 [@media(hover:none)]:translate-y-0
                     transition-transform duration-500 ease-in-out
                     pointer-events-auto
                   "
