@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Instagram } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { openWhatsAppOrder } from "@/lib/whatsapp";
 import { Price } from "@/components/Price";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const REELS_PER_PAGE = 6;
 const PHOTOS_PER_PAGE = 8;
@@ -93,27 +94,60 @@ function Pagination({
 
 let feedRequest: Promise<InstagramFeedResponse | null> | null = null;
 
-// Both sections read the same feed, so share one request between them.
-function loadFeed() {
+// Both sections (and the page loader) read the same feed, so share one request between them.
+export function loadFeed(): Promise<InstagramFeedResponse | null> {
   feedRequest ??= fetch("/api/instagram")
     .then((response) => (response.ok ? response.json() : null))
     .catch(() => null);
   return feedRequest;
 }
 
+// Starts empty with loading=true so the sections show skeletons, not sample posts that get swapped out.
 function useInstagramFeed() {
-  const [reels, setReels] = useState<ImagePlaceholder[]>(fallbackReels);
-  const [photos, setPhotos] = useState<ImagePlaceholder[]>(fallbackPhotos);
+  const [feed, setFeed] = useState({
+    reels: [] as ImagePlaceholder[],
+    photos: [] as ImagePlaceholder[],
+    loading: true,
+  });
 
   useEffect(() => {
     loadFeed().then((data) => {
-      if (data?.source !== "instagram") return;
-      if (data.reels?.length) setReels(data.reels);
-      if (data.photos?.length) setPhotos(data.photos);
+      const live = data?.source === "instagram";
+      setFeed({
+        reels: live && data.reels?.length ? data.reels : fallbackReels,
+        photos: live && data.photos?.length ? data.photos : fallbackPhotos,
+        loading: false,
+      });
     });
   }, []);
 
-  return { reels, photos };
+  return feed;
+}
+
+function PhotoSkeletons() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6" aria-label="Loading collection">
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className={`flex flex-col gap-2 sm:gap-3 ${index >= 4 ? "hidden md:flex" : ""}`}>
+          <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-9 w-full rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReelSkeletons() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6" aria-label="Loading reels">
+      {/* One placeholder per visible column: 1 on phones, 2 on tablets, 3 on desktop. */}
+      {["", "hidden sm:block", "hidden md:block"].map((visibility, index) => (
+        <Skeleton key={index} className={`aspect-[9/16] w-full rounded-2xl ${visibility}`} />
+      ))}
+    </div>
+  );
 }
 
 function SectionHeading({ title, showFollow }: { title: string; showFollow?: boolean }) {
@@ -138,12 +172,13 @@ function SectionHeading({ title, showFollow }: { title: string; showFollow?: boo
 }
 
 export function InstagramReels() {
-  const { reels } = useInstagramFeed();
+  const { reels, loading } = useInstagramFeed();
   const reelPages = usePagination(reels, REELS_PER_PAGE);
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <SectionHeading title="Trending Reels" showFollow />
+      {loading ? <ReelSkeletons /> : (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         {reelPages.pageItems.map((reel) => (
           <div
@@ -162,20 +197,22 @@ export function InstagramReels() {
           </div>
         ))}
       </div>
-      <Pagination {...reelPages} />
+      )}
+      {!loading && <Pagination {...reelPages} />}
     </div>
   );
 }
 
 export function InstagramPhotos({ id }: { id?: string }) {
-  const { photos } = useInstagramFeed();
+  const { photos, loading } = useInstagramFeed();
   const photoPages = usePagination(photos, PHOTOS_PER_PAGE);
 
-  if (!photos.length) return null;
+  if (!loading && !photos.length) return null;
 
   return (
     <section id={id} className="py-12 sm:py-24 space-y-6 sm:space-y-8">
       <SectionHeading title="Latest Collection" showFollow />
+      {loading ? <PhotoSkeletons /> : (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
         {photoPages.pageItems.map((photo) => (
           <div key={photo.id} className="group flex flex-col gap-2 sm:gap-3">
@@ -208,7 +245,8 @@ export function InstagramPhotos({ id }: { id?: string }) {
           </div>
         ))}
       </div>
-      <Pagination {...photoPages} />
+      )}
+      {!loading && <Pagination {...photoPages} />}
     </section>
   );
 }

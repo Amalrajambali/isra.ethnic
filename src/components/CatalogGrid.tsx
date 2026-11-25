@@ -10,15 +10,15 @@ import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { openWhatsAppOrder } from "@/lib/whatsapp";
 import { Price } from "@/components/Price";
 
-const ITEMS_PER_PAGE_DESKTOP = 3;
-const ITEMS_PER_PAGE_MOBILE = 2;
+// 4 per page: one row of 4 on desktop, a 2x2 grid on phones.
+const ITEMS_PER_PAGE = 4;
 const fallbackCatalog = PlaceHolderImages.filter((item) => item.id.startsWith("catalog-"));
 
 export function CatalogGrid() {
   const [currentPage, setCurrentPage] = useState(1);
   const [catalogSource, setCatalogSource] = useState(fallbackCatalog);
   const isMobile = useIsMobile();
-  const itemsPerPage = isMobile ? ITEMS_PER_PAGE_MOBILE : ITEMS_PER_PAGE_DESKTOP;
+  const itemsPerPage = ITEMS_PER_PAGE;
 
   useEffect(() => {
     getCatalogItems()
@@ -48,7 +48,7 @@ export function CatalogGrid() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         {paginatedCatalogImages.map((imgData, idx) => {
           return (
             <div

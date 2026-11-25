@@ -1,5 +1,6 @@
 import { Hero } from "@/components/Hero";
 import { SiteNav } from "@/components/SiteNav";
+import { PageLoader } from "@/components/PageLoader";
 import { CatalogGrid } from "@/components/CatalogGrid";
 import { DrapeTool } from "@/components/DrapeTool";
 import { PatternAnalysis } from "@/components/PatternAnalysis";
@@ -11,6 +12,7 @@ import { Instagram, Facebook } from "lucide-react";
 export default function Home() {
   return (
     <main className="min-h-screen bg-background text-foreground pt-20">
+      <PageLoader />
       <SiteNav />
 
       <Hero />
