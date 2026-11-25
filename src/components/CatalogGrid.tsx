@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/app/lib/placeholder-images";
 import { getCatalogItems } from "@/lib/catalog";
@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { openWhatsAppOrder } from "@/lib/whatsapp";
 import { Price } from "@/components/Price";
+import { scrollToSectionTop } from "@/lib/utils";
 
 // 4 per page: one row of 4 on desktop, a 2x2 grid on phones.
 const ITEMS_PER_PAGE = 4;
@@ -16,6 +17,7 @@ const fallbackCatalog = PlaceHolderImages.filter((item) => item.id.startsWith("c
 
 export function CatalogGrid() {
   const [currentPage, setCurrentPage] = useState(1);
+  const topRef = useRef<HTMLDivElement>(null);
   const [catalogSource, setCatalogSource] = useState(fallbackCatalog);
   const isMobile = useIsMobile();
   const itemsPerPage = ITEMS_PER_PAGE;
@@ -46,8 +48,14 @@ export function CatalogGrid() {
     page * itemsPerPage
   );
 
+  // Pagination buttons sit below the grid, so bring "The Signature Series" heading back into view.
+  const goToPage = (nextPage: number) => {
+    setCurrentPage(nextPage);
+    scrollToSectionTop(topRef.current);
+  };
+
   return (
-    <div className="space-y-8">
+    <div ref={topRef} className="space-y-8">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         {paginatedCatalogImages.map((imgData, idx) => {
           return (
@@ -136,7 +144,7 @@ export function CatalogGrid() {
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
-            onClick={() => setCurrentPage(Math.max(1, page - 1))}
+            onClick={() => goToPage(Math.max(1, page - 1))}
             disabled={page === 1}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -148,7 +156,7 @@ export function CatalogGrid() {
           </span>
           <button
             type="button"
-            onClick={() => setCurrentPage(Math.min(totalPages, page + 1))}
+            onClick={() => goToPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >

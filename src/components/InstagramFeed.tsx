@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlaceHolderImages, type ImagePlaceholder } from "@/app/lib/placeholder-images";
 import { ChevronLeft, ChevronRight, Instagram } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { openWhatsAppOrder } from "@/lib/whatsapp";
 import { Price } from "@/components/Price";
 import { Skeleton } from "@/components/ui/skeleton";
+import { scrollToSectionTop } from "@/lib/utils";
 
 const REELS_PER_PAGE = 6;
 const PHOTOS_PER_PAGE = 8;
@@ -41,16 +42,22 @@ function buildInstagramEmbedUrl(reelUrl: string) {
   return `${url.origin}${path}/embed/`;
 }
 
+// topRef goes on the section's container; changing page scrolls back up to that section's heading.
 function usePagination<T>(items: T[], perPage: number) {
   const [currentPage, setCurrentPage] = useState(1);
+  const topRef = useRef<HTMLDivElement>(null);
   const totalPages = Math.max(1, Math.ceil(items.length / perPage));
   const page = Math.min(currentPage, totalPages);
 
   return {
+    topRef,
     page,
     totalPages,
     pageItems: items.slice((page - 1) * perPage, page * perPage),
-    setPage: setCurrentPage,
+    setPage: (nextPage: number) => {
+      setCurrentPage(nextPage);
+      scrollToSectionTop(topRef.current);
+    },
   };
 }
 
@@ -176,7 +183,7 @@ export function InstagramReels() {
   const reelPages = usePagination(reels, REELS_PER_PAGE);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div ref={reelPages.topRef} className="space-y-6 sm:space-y-8">
       <SectionHeading title="Trending Reels" showFollow />
       {loading ? <ReelSkeletons /> : (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
@@ -198,7 +205,7 @@ export function InstagramReels() {
         ))}
       </div>
       )}
-      {!loading && <Pagination {...reelPages} />}
+      {!loading && <Pagination page={reelPages.page} totalPages={reelPages.totalPages} setPage={reelPages.setPage} />}
     </div>
   );
 }
@@ -210,7 +217,7 @@ export function InstagramPhotos({ id }: { id?: string }) {
   if (!loading && !photos.length) return null;
 
   return (
-    <section id={id} className="py-12 sm:py-24 space-y-6 sm:space-y-8">
+    <section id={id} ref={photoPages.topRef} className="py-12 sm:py-24 space-y-6 sm:space-y-8">
       <SectionHeading title="Latest Collection" showFollow />
       {loading ? <PhotoSkeletons /> : (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -246,7 +253,7 @@ export function InstagramPhotos({ id }: { id?: string }) {
         ))}
       </div>
       )}
-      {!loading && <Pagination {...photoPages} />}
+      {!loading && <Pagination page={photoPages.page} totalPages={photoPages.totalPages} setPage={photoPages.setPage} />}
     </section>
   );
 }
