@@ -48,7 +48,7 @@ function refreshTokenInBackground(token: string) {
 }
 
 // Use the first line that isn't just hashtags, so the title reads like a product name.
-function getCaption(media: InstagramMedia) {
+export function getCaption(media: Pick<InstagramMedia, "caption">) {
   const lines = (media.caption || "")
     .split("\n")
     .map((line) => line.replace(/#\S+/g, "").trim())
@@ -114,4 +114,36 @@ async function fetchInstagramFeed(token: string): Promise<InstagramFeedData> {
   }
 
   return { reels, photos };
+}
+
+export type InstagramReel = {
+  id: string;
+  caption: string;
+  permalink: string;
+  timestamp: string;
+  // Instagram leaves media_url out when the reel uses copyrighted music, so it can't be downloaded.
+  mediaUrl?: string;
+};
+
+// Newest reels from the first page only, fetched fresh (no cache) so the YouTube sync sees new posts right away.
+export async function getRecentReels(token: string): Promise<InstagramReel[]> {
+  const response = await fetch(
+    `${GRAPH_URL}/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&limit=25&access_token=${token}`,
+    { cache: "no-store" }
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message || `Instagram request failed: ${response.status}`);
+  }
+
+  const page = (await response.json()) as InstagramMediaPage;
+  return page.data
+    .filter((media) => media.media_type === "VIDEO")
+    .map((media) => ({
+      id: media.id,
+      caption: media.caption || "",
+      permalink: media.permalink,
+      timestamp: media.timestamp,
+      mediaUrl: media.media_url,
+    }));
 }

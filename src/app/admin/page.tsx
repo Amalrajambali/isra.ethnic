@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Eye, EyeOff, IndianRupee, Loader2, Sparkles, X } from "lucide-react";
+import { YouTubeShortsPanel } from "@/components/YouTubeShortsPanel";
 
 type Filter = "all" | "missing" | "hidden";
 
@@ -188,6 +189,8 @@ export default function AdminPricesPage() {
             Log out
           </button>
         </div>
+
+        <YouTubeShortsPanel password={password} />
 
         <div className="flex gap-2 text-sm">
           {(Object.keys(filters) as Filter[]).map((option) => (

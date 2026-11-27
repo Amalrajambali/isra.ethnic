@@ -19,7 +19,7 @@ function getRedisConfig() {
   return url && token ? { url, token } : null;
 }
 
-async function redis<T>(command: string[]): Promise<T> {
+export async function redis<T>(command: string[]): Promise<T> {
   const config = getRedisConfig();
   if (!config) throw new Error("Price storage is not configured (KV_REST_API_URL / KV_REST_API_TOKEN)");
 
