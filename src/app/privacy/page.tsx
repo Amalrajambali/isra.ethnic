@@ -67,6 +67,29 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
+          <h2 className="font-headline text-xl text-primary">Data stored, retention and deletion</h2>
+          <p>
+            For the YouTube integration we store only: the Google access (refresh) token for our own channel, our
+            channel name, and the IDs of the videos we uploaded, so the same reel is not uploaded twice. We do not
+            store any other YouTube or Google account data.
+          </p>
+          <p>
+            This data is kept only while the YouTube connection is active. Clicking &quot;Disconnect&quot; in our
+            admin page deletes the stored token and channel name immediately. Revoking access from{" "}
+            <a
+              href="https://myaccount.google.com/permissions"
+              className="text-primary underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google account permissions
+            </a>{" "}
+            stops all access at once. Any remaining data is deleted on request within 7 days. Contact us using the
+            details below.
+          </p>
+        </section>
+
+        <section className="space-y-2">
           <h2 className="font-headline text-xl text-primary">Contact</h2>
           <p>
             For any privacy question, message or call us on WhatsApp at{" "}
