@@ -7,7 +7,10 @@ import { PatternAnalysis } from "@/components/PatternAnalysis";
 import { InstagramPhotos, InstagramReels } from "@/components/InstagramFeed";
 import { BoutiqueLocator } from "@/components/BoutiqueLocator";
 import { ContactButtons } from "@/components/ContactButtons";
-import { Instagram, Facebook } from "lucide-react";
+import Link from "next/link";
+import { Instagram, Facebook, Youtube } from "lucide-react";
+
+const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@israethnic";
 
 export default function Home() {
   return (
@@ -77,10 +80,27 @@ export default function Home() {
               >
                 <Facebook className="h-4 w-4" />
               </a>
+              <a
+                href={YOUTUBE_CHANNEL_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="YouTube"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary/5 hover:text-primary"
+              >
+                <Youtube className="h-4 w-4" />
+              </a>
             </div>
 
             <div className="text-center text-xs text-muted-foreground tracking-[0.2em] uppercase">
               (c) {new Date().getFullYear()} Isra Churidars & Sarees. Crafted for the elegant. Social: Isra Ethnic.
+              <div className="mt-2 flex justify-center gap-4 normal-case tracking-normal">
+                <Link href="/privacy" className="hover:text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms" className="hover:text-primary hover:underline">
+                  Terms of Service
+                </Link>
+              </div>
             </div>
 
             <div className="hidden md:block text-right text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
